@@ -818,6 +818,12 @@ class Annotations(object):
 
         return type, spans
 
+    def _parse_textlevel_annotation(self, _id, data, data_tail, input_file_path):
+        args = data.split(' ')
+        _type = args[0]
+        ids = args[1:]
+        return TextLevelAnnotation(_id,_type,ids,data_tail.strip())
+
     def _parse_textbound_annotation(self, _id, data, data_tail, input_file_path):
         _type, spans = self._split_textbound_data(_id, data, input_file_path)
         return TextBoundAnnotation(spans, _id, _type, data_tail, source_id=input_file_path)
