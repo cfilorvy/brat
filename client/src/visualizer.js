@@ -15,6 +15,8 @@ var Visualizer = (function($, window, undefined) {
       this.markedSent = {};
       this.spanAnnTexts = {};
       this.towers = {};
+      //added by sander naert
+      this.folia = {};
       // this.sizes = {};
     };
 
@@ -415,6 +417,15 @@ var Visualizer = (function($, window, undefined) {
 
       var setMarked = function(markedType) {
         $.each(args[markedType] || [], function(markedNo, marked) {
+          //Hack by sander naert, args contains only an id and not an array
+          //this happens when an annotation is edited/created
+          //couldn't find where args' value is set
+          var array = ['T','A','R','E','*','#','F','N','M'];
+          if (array.indexOf(marked[0]) > -1){
+              marked = [marked];
+          }
+          
+
           if (marked[0] == 'sent') {
             data.markedSent[marked[1]] = true;
           } else if (marked[0] == 'equiv') { // [equiv, Equiv, T1]
@@ -540,6 +551,53 @@ var Visualizer = (function($, window, undefined) {
         dispatcher.post('newSourceData', [sourceData]);
         data = new DocumentData(sourceData.text);
 
+        //added by sander naert
+        if( sourceData.folia["tokens"] ){
+            data.folia = sourceData.folia["tokens"];
+            //dispatcher.post('messages', [[['Annotations' + sourceData.folia["entities"], 'error']]]);
+                $.each(sourceData.folia["entities"], function(entityNo, entity) {
+                  // offsets given as array of (start, end) pairs
+                  var span =
+                      //      (id,        type,      offsets,   generalType)
+                      new Span(entity[0], entity[1], entity[2], 'entity');
+                  data.spans[entity[0]] = span;
+                });
+            $.each(sourceData.folia["relations"], function(relNo, rel) {
+                //dispatcher.post('messages', [[['relation', 'error']]]);
+                var t1, t2;
+                t1 = rel[2][0][1];
+                t2 = rel[2][1][1];
+                data.eventDescs[rel[0]] =new EventDesc(t1, t1,        [[rel[1], t2]], 'relation');
+                    //           (id, triggerId, roles,          klass)
+            });
+            $.each(sourceData.folia["comments"], function(comNo, com) {
+                //id, type, text
+                id = com[0];
+                if(id[0] === 'T'){
+                    data.spans[id].comment = { type: com[1], text: com[2] };
+                    data.spans[id].annotatorNotes = com[2];
+                } else if(id[0] === 'R'){
+                    data.eventDescs[id].comment = { type: com[1], text: com[2] };
+                    data.eventDescs[id].annotatorNotes = com[2];
+                }
+            });
+            $.each(sourceData.folia["attributes"], function(attrNo, attr) {
+                  // attr: [id, name, spanId, value
+
+                  // TODO: might wish to check what's appropriate for the type
+                  // instead of using the first attribute def found
+                  var span = data.spans[attr[2]];
+                  if (!span) {
+                    dispatcher.post('messages', [[['Annotation ' + attr[2] + ', referenced from attribute ' + attr[0] + ', does not exist.', 'error']]]);
+                    return;
+                  }
+                  var valText = attr[3];
+                  var attrText = attr[1] + ': ' + attr[3];
+                  span.attributeText.push(attrText);
+                  span.attributes[attr[1]] = attr[3];
+            });
+        }
+		//end by sander Naert
         // collect annotation data
         $.each(sourceData.entities, function(entityNo, entity) {
           // offsets given as array of (start, end) pairs
@@ -2926,7 +2984,41 @@ Util.profileStart('before render');
       var onMouseOver = function(evt) {
         var target = $(evt.target);
         var id;
-        if (id = target.attr('data-span-id')) {
+        //added by sander naert to show extra info folia info while hovering words
+        if (id = target.attr('data-chunk-id')) {
+			 var x = evt.clientX-parseInt($('body').css('margin'));
+			 var chunk = data.chunks[id];
+			 var index = chunk.text.length;
+			 var begin = 0;
+			 var wordx = parseInt(target.attr('x'));
+			 var string = chunk.text;
+			 var i = 0;
+			 while(chunk.text.substring(begin).indexOf(' ') > 0){
+				 i++;
+				 var space = chunk.text.substring(begin).indexOf(' ');
+				 if (wordx <= x){
+					wordx += target.get(0).getSubStringLength(begin,space+1);
+					string = chunk.text.substring(begin,begin+space);
+					begin = begin+space+1;
+				} else {
+					break;}	
+						 
+			 }
+			 if ( x> wordx){
+				 string = chunk.text.substring(begin);
+			 } else {
+				 begin -= (string.length+1)
+			 }
+			 var comment =string;
+			 if (data.folia[chunk.from+begin]){
+				 for (var i in data.folia[chunk.from+begin])
+				 { 
+					comment += '\n' +i+data.folia[chunk.from+begin][i];
+				 }			
+			 //dispatcher.post('messages', [[['margin: '+ parseInt(test), 'error']]]); 
+				dispatcher.post('displayFoliaComment', [evt,target,comment]);
+			}
+        } else if (id = target.attr('data-span-id')) {
           commentId = id;
           var span = data.spans[id];
           dispatcher.post('displaySpanComment', [
@@ -3105,6 +3197,35 @@ Util.profileStart('before render');
         }
         dispatcher.post('configurationChanged');
       }
+
+	  //added by Sander naert
+	  var setVisualLayers = function() {
+        Configuration.layers = [];
+		$("#layers_form input[type=checkbox]").each(function() {
+			var val = this.value;
+			var checked = this.checked;
+            if (! checked){
+                Configuration.layers.push(val);
+            }
+            //TODO REMOVE
+			//~ if (checked){
+				//~ var index=0;
+				//~ for (var i in Configuration.layers){
+					//~ if(Configuration.layers[i] === val){
+						//~ index=i;
+						//~ break;
+					//~ }
+				//~ }
+				//~ if (index >= 0 && Configuration.layers[i] === val){
+					//~ Configuration.layers.splice(index,1);
+				//~ }
+			//~ } else if(Configuration.layers.indexOf(val) < 0){
+				//~ Configuration.layers.push(val);
+			//~ }
+		});      
+		dispatcher.post('configurationChangedWithUpdate'); 
+		
+      };
 
       var setSvgWidth = function(_width) {
         $svgDiv.width(_width);
@@ -3305,6 +3426,7 @@ Util.profileStart('before render');
           on('current', gotCurrent).
           on('clearSVG', clearSVG).
           on('mouseover', onMouseOver).
+          on('visualLayers', setVisualLayers). //added by Sander Naert
           on('mouseout', onMouseOut);
     };
 

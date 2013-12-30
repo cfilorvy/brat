@@ -125,6 +125,10 @@
             <input id="search_button" type="checkbox" class="login" value="true" tabindex="-1"/><label id="search_button_label" for="search_button" title="Search text and annotations">Search</label><input id="clear_search_button" type="button" value="✕" tabindex="-1" title="Clear search" style="display: none"/>
             <!--<input id="undo_button" type="button" class="login" value="Undo" tabindex="-1"/>-->
             <input id="options_button" type="button" value="Options" tabindex="-1" title="Set Visual, Annotation and Network Options"/>
+            <!-- added by Sander Naert -->
+            <input id="layers_button" type="button" value="Visible Layers" tabindex="-1" title="Set which annotation layers should be visible"/>
+            <input id="folia_layers_button" type="button" value="Folia info" tabindex="-1" title="Set which extra folia info should be visible"/>
+            <input id="textann_button" type="button" value="Text Level Annotations" tabindex="-1" title="Set the text level annotation"/>
           </div>
           <!-- Dummy span, fixes visual glitch (issue #535). TODO: better fix -->
           <span class="document_edit_time unselectable">&nbsp;</span>
@@ -185,6 +189,11 @@
                    title="Do include the configuration files">on</label>
           </span>
         </div>
+        <!-- Added by Sander, brat to folia convertion-->
+         <div class="optionRow">
+          <span id="folia_export" class="optionLabel">FoLiA</span>
+          <span id="folia_file" class="optionLabel">FoLiA</span>
+         </div>
       </fieldset>
       <!-- Data dialog comparison section -->
       <fieldset class="small-buttons">
@@ -221,6 +230,12 @@
           <input id="import_collection_button" type="button" class="login ui-button-text" value="Upload archive" tabindex="-1" title="Import an entire collection into the current installation"/>
         </div>
         -->
+        <!-- Added by Sander, folia to brat convertion-->
+        <div class="optionRow">
+          <span class="optionLabel">FoLiA</span>
+          <input id="folia_file_title" title="Folia filename without extension"/>
+          <input id="convert_folia_button" type="button" class="login ui-button-text" value="Convert xml" tabindex="-1" title="Convert a folia file to a file suited for brat"/>
+        </div>
       </fieldset>
       <!-- Data dialog delete section -->
       <div style="display: none;">
@@ -237,6 +252,36 @@
         </fieldset>
       </div>
     </form>
+     <!-- Visible Layers, folia info and textlevel dialog added by Sander Naert -->
+    <form id="layers_form" class="dialog" title="Visible layers">
+		<span id="layers_span" class="small-buttons">
+		</span>
+	</form>
+    <form id="folia_layers_form" class="dialog" title="Folia info">
+		<span id="folia_layers_span" class="small-buttons">
+            <table border="0">
+                <tr><td>Folia layers:</td></tr>
+                <tr><td><input type="checkbox" id="all_button" value="all" checked="checked"/>
+                <label for="all_button" title="This button will enable/disable all extra folia info">All info</label></td></tr>
+                <tr><td><input type="checkbox" id="sem_button" value="semantic" checked="checked"/>
+                <label for="sem_button" title="This button will enable/disable the visualisiation of this layer">Semantic roles</label></td></tr>
+                <tr><td><input type="checkbox" id="chunk_button" value="chunk" checked="checked"/>
+                <label for="chunk_button" title="This button will enable/disable the visualisiation of this layer">Chunking</label></td></tr>
+                <tr><td><input type="checkbox" id="coref_button" value="coref" checked="checked"/>
+                <label for="coref_button" title="This button will enable/disable the visualisiation of this layer">Coreferences</label></td></tr>
+                <tr><td><input type="checkbox" id="alt_button" value="alter" checked="checked"/>
+                <label for="alt_button" title="This button will enable/disable the visualisiation of this layer">Alternatives</label></td></tr>
+                <tr><td><input type="checkbox" id="su_button" value="syntax" checked="checked"/>
+                <label for="su_button" title="This button will enable/disable the visualisiation of this layer">Syntax</label></td></tr>
+                <tr><td><input type="checkbox" id="dep_button" value="dependency" checked="checked"/>
+                <label for="dep_button" title="This button will enable/disable the visualisiation of this layer">Dependencies</label></td></tr>
+                </table>
+		</span>
+	</form>
+	<form id="textLevel_form" class="dialog" title="Text level annotations">
+		<span id="textLevel_span" class="radio_group small-buttons">
+		</span>
+	</form>
     <!-- Options dialog -->
     <form id="options_form" class="dialog" title="Options">
       <fieldset id="options_form_visual">
@@ -316,6 +361,24 @@
             <label for="annotation_speed3"
                    title="Rapid annotation mode: activate automatic support for speeding up annotation process. Suitable for experienced annotators performing an established task.">Rapid</label>
             <select id="rapid_model"/>
+          </span>
+        </div>
+        <!-- Added by Sander, user can toggle validation on and of-->
+        <div class="optionRow">
+          <span class="optionLabel">Validation</span>
+          <span class="small-buttons">
+            <input id="validation_mode" type="checkbox"/>
+            <label for="validation_mode" 
+                   title="Toggle the validation on/off. When validation is on the system will validate the document after every change.">Validate</label>
+          </span>
+        </div>
+        <!-- Added by Sander, user can toggle autoredraw on and of-->
+        <div class="optionRow">
+          <span class="optionLabel">Autoredraw</span>
+          <span class="small-buttons">
+            <input id="autoredraw_mode" type="checkbox" checked="checked"/>
+            <label for="autoredraw_mode" 
+                   title="Toggle the autoredraw on/off. When autoredraw is off the system won't redraw the svg unless you refresh.">Autoredraw</label>
           </span>
         </div>
       </fieldset>

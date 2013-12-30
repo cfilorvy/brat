@@ -142,7 +142,7 @@ def verify_entity_overlap(ann_obj, projectconf):
     for a1, a2 in overlapping:
         if a1.same_span(a2):
             if not projectconf.spans_can_be_equal(a1.type, a2.type):
-                issues.append(AnnotationIssue(a1.id, AnnotationError, "Error: %s cannot have identical span with %s %s" % (disp(a1.type), disp(a2.type), a2.id)))            
+                issues.append(AnnotationIssue(a1.id, AnnotationError, "Error: %s cannot have identical span with %s %s" % (disp(a1.type), disp(a2.type), a2.id)))
         elif a2.contains(a1):
             if not projectconf.span_can_contain(a1.type, a2.type):
                 issues.append(AnnotationIssue(a1.id, AnnotationError, "Error: %s cannot be contained in %s (%s)" % (disp(a1.type), disp(a2.type), a2.id)))
@@ -152,7 +152,7 @@ def verify_entity_overlap(ann_obj, projectconf):
         else:
             if not projectconf.spans_can_cross(a1.type, a2.type):
                 issues.append(AnnotationIssue(a1.id, AnnotationError, "Error: annotation cannot have crossing span with %s" % a2.id))
-    
+
     # TODO: generalize to other cases
     return issues
 
@@ -258,7 +258,7 @@ def verify_relations(ann_obj, projectconf):
                 match_found = True
         r.arg1, r.arg2, r.arg1l, r.arg2l = r.arg2, r.arg1, r.arg2l, r.arg1l
         if match_found:
-            continue            
+            continue
 
         # not found for either argument order
         issues.append(AnnotationIssue(r.id, AnnotationError, "Error: %s relation %s:%s %s:%s not allowed" % (disp(r.type), r.arg1l, disp(a1.type), r.arg2l, disp(a2.type))))
@@ -274,7 +274,7 @@ def verify_missing_arguments(ann_obj, projectconf):
     # shortcut
     def disp(s):
         return projectconf.preferred_display_form(s)
-    
+
     for e in ann_obj.get_events():
         nonum_arg_counts = event_nonum_arg_count(e)
         for m in projectconf.mandatory_arguments(e.type):
@@ -291,7 +291,7 @@ def verify_missing_arguments(ann_obj, projectconf):
                     countstr = "exactly " + countstr
                 else:
                     countstr = "at least " + countstr
-                issues.append(AnnotationIssue(e.id, AnnotationIncomplete, 
+                issues.append(AnnotationIssue(e.id, AnnotationIncomplete,
                                               "Incomplete: " + countstr + "required for event"))
 
     return issues
@@ -340,7 +340,7 @@ def verify_extra_arguments(ann_obj, projectconf):
                 issues.append(AnnotationIssue(e.id, AnnotationError, "Error: %s cannot take multiple %s arguments" % (disp(e.type), disp(a))))
             elif nonum_arg_counts[a] > amax:
                 issues.append(AnnotationIssue(e.id, AnnotationError, "Error: %s can take at most %d %s arguments" % (disp(e.type), amax, disp(a))))
-    
+
     return issues
 
 def verify_attributes(ann_obj, projectconf):
@@ -358,10 +358,26 @@ def verify_attributes(ann_obj, projectconf):
         tid = a.target
         t = ann_obj.get_ann_by_id(tid)
         allowed = projectconf.attributes_for(t.type)
-        
+
         if a.type not in allowed:
             issues.append(AnnotationIssue(t.id, AnnotationError, "Error: %s cannot take a %s attribute" % (disp(t.type), disp(a.type))))
 
+    return issues
+
+def validate_annotation(ann, projectconf):
+    '''
+    Added by Sander Naert
+    Will check an annotation file on user defined rules.
+    '''
+    from message import Messager
+    from validation_rule import ValidationRules
+    issues =[]
+    try:
+        vrules = ValidationRules(projectconf)
+        issues = vrules.validate(ann)[0]
+    except Exception as e:
+        Messager.error("Error: validating annotations: "+ str(e))
+        pass
     return issues
 
 def verify_annotation(ann_obj, projectconf):
@@ -388,7 +404,7 @@ def verify_annotation(ann_obj, projectconf):
     issues += verify_extra_arguments(ann_obj, projectconf)
 
     issues += verify_attributes(ann_obj, projectconf)
-    
+
     return issues
 
 def argparser():

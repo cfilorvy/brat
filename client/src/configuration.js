@@ -15,7 +15,12 @@ var Configuration = (function(window, undefined) {
       curlyHeight: 4,
       arcSpacing: 9, //10;
       arcStartHeight: 19, //23; //25;
-    }
+    };
+    //added by Sander Naert
+    var validationOn = false;
+    var autoRedraw = true;
+    var layers = [];
+    var foliaLayers = [];
 
     return {
       abbrevsOn: abbrevsOn,
@@ -25,5 +30,9 @@ var Configuration = (function(window, undefined) {
       rapidModeOn: rapidModeOn,
       confirmModeOn: confirmModeOn,
       autorefreshOn: autorefreshOn,
+      autoRedraw: autoRedraw, //added by Sander Naert
+      layers: layers,
+      foliaLayers: foliaLayers,
+      validationOn: validationOn,
     };
 })(window);

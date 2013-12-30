@@ -20,7 +20,7 @@ from re import compile as re_compile
 from annotation import (OnelineCommentAnnotation, TEXT_FILE_SUFFIX,
         TextAnnotations, DependingAnnotationDeleteError, TextBoundAnnotation,
         EventAnnotation, EquivAnnotation, open_textfile,
-        AnnotationsIsReadOnlyError, AttributeAnnotation, 
+        AnnotationsIsReadOnlyError, AttributeAnnotation,
         NormalizationAnnotation, SpanOffsetOverlapError, DISCONT_SEP)
 from common import ProtocolError, ProtocolArgumentError
 try:
@@ -105,6 +105,14 @@ class ModificationTracker(object):
                 uniqued.append(i)
                 seen.add(s)
         response['edited'] = uniqued
+
+        #added deleted  by sander naert
+        response['deleted'] = []
+        for a in self.__deleted:
+            try:
+                response['deleted'].append(a.id)
+            except AttributeError:
+                pass
 
         return response
 
@@ -206,7 +214,7 @@ def _edit_span(ann_obj, mods, id, offsets, projectconf, attributes, type,
 
     if not _offsets_equal(tb_ann.spans, offsets):
         if not isinstance(tb_ann, TextBoundAnnotation):
-            # TODO XXX: the following comment is no longer valid 
+            # TODO XXX: the following comment is no longer valid
             # (possibly related code also) since the introduction of
             # TextBoundAnnotationWithText. Check.
 
@@ -311,7 +319,7 @@ def __create_span(ann_obj, mods, type, offsets, txt_file_path,
             except AttributeError:
                 # Not a trigger then
                 pass
-        
+
     if found is None:
         # Get a new ID
         new_id = ann_obj.get_new_id('T') #XXX: Cons
@@ -605,7 +613,7 @@ def _create_span(collection, document, offsets, _type, attributes=None,
     working_directory = path_split(document)[0]
 
     with TextAnnotations(document) as ann_obj:
-        # bail as quick as possible if read-only 
+        # bail as quick as possible if read-only
         if ann_obj._read_only:
             raise AnnotationsIsReadOnlyError(ann_obj.get_document())
 
@@ -680,7 +688,7 @@ def _create_equiv(ann_obj, projectconf, mods, origin, target, type, attributes,
         # sanity
         assert old_target is None, '_create_equiv: incoherent args: old_type is None, old_target is not None (client/protocol error?)'
 
-        ann = EquivAnnotation(type, [unicode(origin.id), 
+        ann = EquivAnnotation(type, [unicode(origin.id),
                                      unicode(target.id)], '')
         ann_obj.add_annotation(ann)
         mods.addition(ann)
@@ -724,7 +732,7 @@ def _create_relation(ann_obj, projectconf, mods, origin, target, type,
         # We are to change the type, target, and/or attributes
         found = None
         for ann in ann_obj.get_relations():
-            if (ann.arg1 == sought_origin and ann.arg2 == sought_target and 
+            if (ann.arg1 == sought_origin and ann.arg2 == sought_target and
                 ann.type == sought_type):
                 found = ann
                 break
@@ -747,8 +755,8 @@ def _create_relation(ann_obj, projectconf, mods, origin, target, type,
         # Create a new annotation
         new_id = ann_obj.get_new_id('R')
         # TODO: do we need to support different relation arg labels
-        # depending on participant types? This doesn't.         
-        rels = projectconf.get_relations_by_type(type) 
+        # depending on participant types? This doesn't.
+        rels = projectconf.get_relations_by_type(type)
         rel = rels[0] if rels else None
         assert rel is not None and len(rel.arg_list) == 2
         a1l, a2l = rel.arg_list
@@ -762,7 +770,7 @@ def _create_relation(ann_obj, projectconf, mods, origin, target, type,
     if target_ann is not None:
         _set_attributes(ann_obj, ann, attributes, mods, undo_resp)
     elif attributes != None:
-        Messager.error('_create_relation: cannot set arguments: failed to identify target relation (type %s, target %s) (deleted?)' % (str(old_type), str(old_target)))        
+        Messager.error('_create_relation: cannot set arguments: failed to identify target relation (type %s, target %s) (deleted?)' % (str(old_type), str(old_target)))
 
     return target_ann
 
@@ -818,7 +826,7 @@ def reverse_arc(collection, document, origin, target, type, attributes=None):
     projectconf = ProjectConfiguration(real_dir)
     document = path_join(real_dir, document)
     with TextAnnotations(document) as ann_obj:
-        # bail as quick as possible if read-only 
+        # bail as quick as possible if read-only
         if ann_obj._read_only:
             raise AnnotationsIsReadOnlyError(ann_obj.get_document())
 
@@ -861,33 +869,33 @@ def create_arc(collection, document, origin, target, type, attributes=None,
     document = path_join(real_dir, document)
 
     with TextAnnotations(document) as ann_obj:
-        # bail as quick as possible if read-only 
+        # bail as quick as possible if read-only
         # TODO: make consistent across the different editing
         # functions, integrate ann_obj initialization and checks
         if ann_obj._read_only:
             raise AnnotationsIsReadOnlyError(ann_obj.get_document())
 
-        origin = ann_obj.get_ann_by_id(origin) 
+        origin = ann_obj.get_ann_by_id(origin)
         target = ann_obj.get_ann_by_id(target)
 
         # if there is a previous annotation and the arcs aren't in
         # the same category (e.g. relation vs. event arg), process
         # as delete + create instead of update.
         if old_type is not None and (
-            projectconf.is_relation_type(old_type) != 
+            projectconf.is_relation_type(old_type) !=
             projectconf.is_relation_type(type) or
             projectconf.is_equiv_type(old_type) !=
             projectconf.is_equiv_type(type)):
-            _delete_arc_with_ann(origin.id, old_target, old_type, mods, 
+            _delete_arc_with_ann(origin.id, old_target, old_type, mods,
                                  ann_obj, projectconf)
             old_target, old_type = None, None
 
         if projectconf.is_equiv_type(type):
-            ann =_create_equiv(ann_obj, projectconf, mods, origin, target, 
+            ann =_create_equiv(ann_obj, projectconf, mods, origin, target,
                                type, attributes, old_type, old_target)
 
         elif projectconf.is_relation_type(type):
-            ann = _create_relation(ann_obj, projectconf, mods, origin, target, 
+            ann = _create_relation(ann_obj, projectconf, mods, origin, target,
                                    type, attributes, old_type, old_target)
         else:
             ann = _create_argument(ann_obj, projectconf, mods, origin, target,
@@ -899,7 +907,7 @@ def create_arc(collection, document, origin, target, type, attributes=None,
                           undo_resp=undo_resp)
         elif comment is not None:
             Messager.warning('create_arc: non-empty comment for None annotation (unsupported type for comment?)')
-            
+
 
         mods_json = mods.json_response()
         mods_json['annotations'] = _json_from_ann(ann_obj)
@@ -911,7 +919,7 @@ def _delete_arc_equiv(origin, target, type_, mods, ann_obj):
     for eq_ann in ann_obj.get_equivs():
         # We don't assume that the ids only occur in one Equiv, we
         # keep on going since the data "could" be corrupted
-        if (unicode(origin) in eq_ann.entities and 
+        if (unicode(origin) in eq_ann.entities and
             unicode(target) in eq_ann.entities and
             type_ == eq_ann.type):
             before = unicode(eq_ann)
@@ -981,7 +989,7 @@ def delete_arc(collection, document, origin, target, type):
     document = path_join(real_dir, document)
 
     with TextAnnotations(document) as ann_obj:
-        # bail as quick as possible if read-only 
+        # bail as quick as possible if read-only
         if ann_obj._read_only:
             raise AnnotationsIsReadOnlyError(ann_obj.get_document())
 
@@ -1000,14 +1008,14 @@ def delete_span(collection, document, id):
     real_dir = real_directory(directory)
 
     document = path_join(real_dir, document)
-    
+
     with TextAnnotations(document) as ann_obj:
-        # bail as quick as possible if read-only 
+        # bail as quick as possible if read-only
         if ann_obj._read_only:
             raise AnnotationsIsReadOnlyError(ann_obj.get_document())
 
         mods = ModificationTracker()
-        
+
         #TODO: Handle a failure to find it
         #XXX: Slow, O(2N)
         ann = ann_obj.get_ann_by_id(id)
@@ -1053,14 +1061,14 @@ def split_span(collection, document, args, id):
     document = path_join(real_dir, document)
     # TODO don't know how to pass an array directly, so doing extra catenate and split
     tosplit_args = json_loads(args)
-    
+
     with TextAnnotations(document) as ann_obj:
-        # bail as quick as possible if read-only 
+        # bail as quick as possible if read-only
         if ann_obj._read_only:
             raise AnnotationsIsReadOnlyError(ann_obj.get_document())
 
         mods = ModificationTracker()
-        
+
         ann = ann_obj.get_ann_by_id(id)
 
         # currently only allowing splits for events
@@ -1166,13 +1174,13 @@ def split_span(collection, document, args, id):
         return mods_json
 
 def set_status(directory, document, status=None):
-    real_dir = real_directory(directory) 
+    real_dir = real_directory(directory)
 
     with TextAnnotations(path_join(real_dir, document)) as ann:
         # Erase all old status annotations
         for status in ann.get_statuses():
             ann.del_annotation(status)
-        
+
         if status is not None:
             # XXX: This could work, not sure if it can induce an id collision
             new_status_id = ann.get_new_id('#')

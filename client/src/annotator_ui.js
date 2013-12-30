@@ -186,6 +186,10 @@ var AnnotatorUI = (function($, window, undefined) {
 
         // do we edit an arc?
         if (id = target.attr('data-arc-role')) {
+		  //Added if by sander naert so folia annotations can't be edited
+		  if(target.attr('data-arc-ed') && target.attr('data-arc-ed')[1] === 'F' ){
+			return;
+          }
           // TODO
           clearSelection();
           var originSpanId = target.attr('data-arc-origin');
@@ -223,6 +227,10 @@ var AnnotatorUI = (function($, window, undefined) {
 
         // if not an arc, then do we edit a span?
         } else if (id = target.attr('data-span-id')) {
+		  //Added if by sander naert so folia annotations can't be edited
+		  if(id[1] === 'F' ){
+			return;
+			}
           clearSelection();
           editedSpan = data.spans[id];
           editedFragment = target.attr('data-fragment-id');
@@ -295,11 +303,14 @@ var AnnotatorUI = (function($, window, undefined) {
         var id;
         // is it arc drag start?
         if (id = target.attr('data-span-id')) {
-          arcOptions = null;
-          startArcDrag(id);
-          evt.stopPropagation();
-          evt.preventDefault();
-          return false;
+			//Added if by sander naert so folia entities can't be edited
+			if(id[1] !== 'F' ){
+                arcOptions = null;
+                startArcDrag(id);
+                evt.stopPropagation();
+                evt.preventDefault();
+                return false;
+            };
         }
       };
 
@@ -2289,6 +2300,26 @@ var AnnotatorUI = (function($, window, undefined) {
         }
       };
 
+      //added by sander naert
+      var easyRedraw = function(response,sourceData){
+          //dispatcher.post('messages', [[['test '+response.deleted.length, 'error']]]);
+          $.each(response.deleted, function(delNo, delId) {
+              //dispatcher.post('messages', [[['Removed '+delId, 'error']]]);
+              //deleted annotations (textbound and relations)
+              if(delId[0] === "T"){
+                  var del = $('#svg').find('rect[data-span-id="'+delId+'"]').parent();
+                  del.remove();
+              }
+              if(delId[0] === "R"){
+                  var del = $('#svg').find('text[data-arc-ed="'+delId+'"]').parent();
+                  del.remove();
+              }
+          });
+          //draws basic entities
+          //~ if(response.added){
+              //~ dispatcher.post('addedAnnotations',[response.added,sourceData]);
+          //~ }
+      };
 
       // TODO: why are these globals defined here instead of at the top?
       var spanForm = $('#span_form');
@@ -2585,6 +2616,23 @@ var AnnotatorUI = (function($, window, undefined) {
         importCollForm.find('input').val('');
       });
 
+	 /* Added by Sander Naert: Folia to brat conversion*/
+      $('#convert_folia_button').click(function() {
+		  var opts = {
+          action : 'convertFolia',
+          path : coll,
+          fname  : $('#folia_file_title').val(),
+        };
+        dispatcher.post('ajax', [opts
+          , function(response) {
+			if(response.exception){
+				dispatcher.post('messages', [[['Error:Problem converting file '+response.exception, 'error']]]);
+			}else if(response.result){
+				dispatcher.post('hideForm');
+				dispatcher.post('setDocument', [$('#folia_file_title').val()])
+			}
+          }]); 
+	  });
 
       /* BEGIN delete button - related */
 

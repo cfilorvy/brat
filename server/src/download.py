@@ -30,6 +30,13 @@ def download_file(document, collection, extension):
     hdrs = [('Content-Type', 'text/plain; charset=utf-8'),
             ('Content-Disposition',
                 'inline; filename=%s' % fname)]
+
+    #Folia conversion added by Sander Naert
+    from brat2folia import convert
+    if extension=='xml':
+		convert(real_dir, document)
+		#convert to folia
+
     with open_textfile(fpath, 'r') as txt_file:
         data = txt_file.read().encode('utf-8')
     raise NoPrintJSONError(hdrs, data)

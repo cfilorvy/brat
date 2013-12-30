@@ -471,6 +471,15 @@ var VisualizerUI = (function($, window, undefined) {
         commentDisplayed = false;
       };
 
+      //added by sander naert
+      var displayFoliaComment = function(evt,target,commentText) {
+        var comment = "";
+        //~ comment += ('<div class="comment_text">' + 
+                    //~ commentText+
+                    //~ '</div>');
+        displayComment(evt, target, comment, commentText, 'Folia');
+      };
+
       var displayArcComment = function(
           evt, target, symmetric, arcId,
           originSpanId, originSpanType, role, 
@@ -1412,6 +1421,426 @@ var VisualizerUI = (function($, window, undefined) {
 
       /* END data dialog - related */
 
+	  // Added by sander Naert, Visible Layers ----------------------- BEGIN
+	  var layersForm = $('#layers_form');
+      var layersFormSubmit = function(evt) {
+		dispatcher.post('visualLayers');
+        dispatcher.post('hideForm');
+        return false;
+      };
+      layersForm.submit(layersFormSubmit);
+      initForm(layersForm, {
+          width: 550,
+          resizable: true,
+          no_cancel: true,
+          open: function(evt) {
+            keymap = {};
+            var options = {
+				  action: 'getAllTypes',
+				  'directory': coll,
+				  };
+		dispatcher.post('ajax', [options, 
+		 function(response) {
+			if(response.exception){
+				dispatcher.post('messages', [[["exception "+response.exception, 'error']]]);
+			} else {
+				var layersSpan = $('#layers_span');
+				var addedAnn = [];
+				layersSpan.empty();
+				var string ="";
+				string += '<table border="0"><tr><td>Entities:</td>';
+				var ignoredAnn =0;
+				for (var i=0; i<response.entities.length; i++){
+					if( addedAnn.indexOf(response.entities[i]) === -1 ){ 
+						if((i-ignoredAnn)%5 === 0)
+							string += '</tr><tr>';
+						string = string +'<td><input type="checkbox" id="'+response.entities[i]+'_button" value="'+response.entities[i]+'" checked="checked"/>';
+						string = string +'<label for="'+response.entities[i]+'_button" title="This button will enable/disable the visualisiation of this annotation"><![CDATA['+response.entities[i]+']]></label></td>';
+						addedAnn.push(response.entities[i]);
+					} else 
+						ignoredAnn++;
+				}
+				string += '</tr></table><table border="0"><tr><td>Events:</td>';
+				ignoredAnn =0;
+				for (var i=0;i<response.events.length;i++){ 
+					if( addedAnn.indexOf(response.events[i]) === -1 ){ 
+						if((i-ignoredAnn)%5 === 0)
+							string += '</tr><tr>';
+						string = string +'<td><input type="checkbox" id="'+response.events[i]+'_button" value="'+response.events[i]+'" checked="checked"/>';
+						string = string +'<label for="'+response.events[i]+'_button" title="This button will enable/disable the visualisiation of this annotation"><![CDATA['+response.events[i]+']]></label></td>';
+						addedAnn.push(response.events[i]);
+					} else 
+						ignoredAnn++;
+				}
+
+				string += '</tr></table><table border="0"><tr><td>Relations:</td>';
+				ignoredAnn =0;
+				for (var i=0;i<response.relations.length;i++){ 
+					if( addedAnn.indexOf(response.relations[i]) === -1 ){ 
+						if((i-ignoredAnn)%3 === 0)
+							string += '</tr><tr>';
+						string = string +'<td><input type="checkbox" id="'+response.relations[i]+'_button" value="'+response.relations[i]+'" checked="checked"/>';
+						string = string +'<label for="'+response.relations[i]+'_button" title="This button will enable/disable the visualisiation of this annotation"><![CDATA['+response.relations[i]+']]></label></td>';
+						addedAnn.push(response.relations[i]);
+					} else 
+						ignoredAnn++;
+				}
+				string += '</tr></table>';
+                //dispatcher.post('messages', [[["test "+string, 'error']]]);
+                try{
+                    layersSpan.append(string);
+                } catch(err){
+                    dispatcher.post('messages', [[["Error, probably a bad name in the config file ", 'error']]]);
+                }
+				$("#layers_form input[type=checkbox]").each(function() {
+					var val = this.value;
+					for (var i in Configuration.layers){
+						if(Configuration.layers[i] === val){
+							$(this).prop("checked", false);
+						}
+					}
+				});
+				$('#layers_span').find('input[type="checkbox"]').button();
+			}
+          }]);
+        }
+      });
+      
+	  $('#layers_button').click(function() {
+        dispatcher.post('showForm', [layersForm]);
+      });
+	
+    
+    // Added by sander Naert, select Folia info form
+      var setFoliaLayers = function() {
+        Configuration.foliaLayers = [];
+		$("#folia_layers_form input[type=checkbox]").each(function() {
+			var val = this.value;
+			var checked = this.checked;
+            if (! checked){
+                Configuration.foliaLayers.push(val);
+            }
+			//~ if (checked){
+				//~ var index=0;
+				//~ for (var i in Configuration.foliaLayers){
+					//~ if(Configuration.foliaLayers[i] === val){
+						//~ index=i;
+						//~ break;
+					//~ }
+				//~ }
+				//~ if (index >= 0 && Configuration.foliaLayers[i] === val){
+					//~ Configuration.foliaLayers.splice(index,1);
+				//~ }
+			//~ } else if(Configuration.foliaLayers.indexOf(val) < 0){
+				//~ Configuration.foliaLayers.push(val);
+			//~ }
+		});      
+		dispatcher.post('configurationChangedWithUpdate'); 
+      };
+      
+	  var folialayersForm = $('#folia_layers_form');
+      var folialayersFormSubmit = function(evt) {
+        setFoliaLayers();
+        dispatcher.post('hideForm');
+        return false;
+      };
+      folialayersForm.submit(folialayersFormSubmit);
+      initForm(folialayersForm, {
+          width: 550,
+          resizable: false,
+          no_cancel: true,
+          open: function(evt) {
+            keymap = {};
+        }
+      });
+      
+	  $('#folia_layers_button').click(function() {
+        dispatcher.post('showForm', [folialayersForm]);
+      });
+      $('#folia_layers_form').find('input[type="checkbox"]').button();
+      
+      
+      
+      
+	   // Added by sander Naert to make a textlevel annotation
+      var currentList;
+	  var buildTableString = function(response) {
+			textLevelList = response;
+            type = "radio";
+            if (response.checkboxes){
+                type = "checkbox";
+            }
+            currentList = response.id;
+		    string ="";	
+			string += '<table border="0"><tr><td>'+response.id+'</td><td>'+response.name+'</td></tr>';
+			for (var i=0; i<response.answer_texts.length; i++){ 
+				string += '<tr><td>'+response.answer_ids[i]+'</td>';
+				if (response.answer_texts[i] == "input"){
+					string += '<td><input type="text" id="'+response.answer_ids[i]+'_text" value="input" name="'+response.answer_ids[i]+'" /></td>';
+				}else {
+					string += '<td><input type="'+type+'" id="'+response.answer_ids[i]+'_button" value="'+response.answer_ids[i]+'" name="textLevel_radios"/>';
+					string += '<label for="'+response.answer_ids[i]+'_button" >'+response.answer_texts[i]+'</label></td>';
+				}
+				string += '</tr>'
+			}
+			string += '</table>';
+		    return string;
+	  };
+	  var textLevelForm = $('#textLevel_form');
+      var textLevelInputSubmit = function() {
+		  $('#textLevel_span input[type="text"]').each(function(index,input){
+			  var options = {
+				  action: 'inputText',
+				  'path': coll,
+				  'doc': doc,
+				  '_id':input.name,
+				  'text':input.value,
+				  'start_list':idStartList,
+                  'current_list':currentList,
+				  };
+			  dispatcher.post('ajax', [options,function(response) {
+                if(response.exception){
+                    dispatcher.post('messages', [[["exception "+response.exception, 'error']]]);
+                } else if(response.stop) {
+                    var textlevelSpan = $('#textLevel_span');
+                    currentList = 'stop';
+                    textlevelSpan.empty();
+                    textlevelSpan.append(response.annotation);
+                    textLevelList = response;
+                    $('#textLevel_form-back').show();
+                }
+			}]);
+		  });
+		  
+        //dispatcher.post('hideForm');
+        return false;
+      };
+      
+      //need to change this name
+      var checkForTextLevel = function(){
+		  if(coll !== null && doc !== null && doc !== "" ) {
+            var textlevelSpan = $('#textLevel_span');
+            textlevelSpan.empty();
+			var options = {
+				  action: 'getStartList',
+				  'path': coll,
+				  'doc': doc,
+				  };
+			dispatcher.post('ajax', [options, 
+			function(response) {
+                build_txtLvlForm(response)
+			}]);
+		}
+	  };
+      
+      var build_txtLvlForm= function(startList){
+        idStartList="";
+        var textlevelSpan = $('#textLevel_span');
+        textlevelSpan.empty();
+        if (user == null){
+            textlevelSpan.append("You need to log in to make a text level annotation");
+            $('#textLevel_form-back').hide();
+        } else {
+           if(startList.exception){
+               textlevelSpan.append(startList.exception);
+               $('#textLevel_form-back').hide();
+            } else {
+                if( ! startList.stop){
+                    var string =buildTableString(startList);
+                    textlevelSpan.append(string);
+                    $('#textLevel_span').find('input[type="radio"]').button();
+                    $('#textLevel_span').find('input[type="checkbox"]').button();
+                    if( startList.back_pos)
+                        $('#textLevel_form-back').show();
+                    else 
+                        $('#textLevel_form-back').hide();
+                    //~ $('#textLevel_span').find('input[type="radio"]').change(function(evt) {
+                        //~ changeEvent(this);
+                        //~ return false;
+                    //~ });
+                } else{
+                    $('#textLevel_form-back').show();
+                    textlevelSpan.append(startList.annotation);
+                }
+           }
+        }
+          
+      };
+      var back_btn = {
+              id: "textLevel_form-back",
+              text: "Back",
+              click: function() {
+				  if( user != null) 
+					backEvent();
+				},
+            };
+     var next_btn = {
+              id: "textLevel_form-next",
+              text: "Next",
+              click: function() {
+				  if( user != null) 
+					changeEvent();
+				},
+            };
+      var form_buttons = [];
+      form_buttons.push(back_btn);
+      form_buttons.push(next_btn);
+      //textLevelForm.submit(textLevelFormSubmit);
+      var  idStartList;
+      initForm(textLevelForm, {
+          width: 550,
+          resizable: false,
+          no_cancel: true,
+          no_ok: true,
+          buttons: form_buttons,
+          open: function(evt) {
+            keymap = {};
+            checkForTextLevel();
+		   }
+      });
+     
+     var backEvent = function(){
+		 var options = {
+					  action: 'previousList',
+					  'path': coll,
+					  'doc': doc,
+					  'start_list':idStartList,
+                      'current_id':currentList,
+			};
+		 dispatcher.post('ajax', [options, 
+			   function(response) {
+				    if(response.exception){
+						dispatcher.post('messages', [[["exception "+response.exception, 'error']]]);
+					} else {
+						var textlevelSpan = $('#textLevel_span');
+						textlevelSpan.empty();
+						var string =buildTableString(response);
+						textlevelSpan.append(string);
+                       var textinput = false
+                        $('#textLevel_span input[type="text"]').each(function(index,input){
+                            input.value = response.answers;
+                            textinput = true;
+                        });
+                        if (textinput){
+                            return false;
+                        }
+                        $('#textLevel_span input').each(function() {
+                            val = this.value;
+                            if (response.answers.indexOf(val) >= 0){
+                                this.checked = true;
+                            }
+                        });
+						$('#textLevel_span').find('input[type="radio"]').button();
+                        $('#textLevel_span').find('input[type="checkbox"]').button();
+						if( response.back_pos)
+							$('#textLevel_form-back').show();
+						else {
+							idStartList = "";
+							$('#textLevel_form-back').hide();
+						}
+						//~ $('#textLevel_span').find('input[type="radio"]').change(function(evt) {
+							//~ changeEvent(this);
+							//~ return false;
+						//~ });
+				}
+			  }]);
+	 };
+     
+      var changeEvent = function(){
+         // dispatcher.post('messages', [[["test ", 'error']]]);
+         var textinput = false;
+         $('#textLevel_span input[type="text"]').each(function(index,input){
+             textinput = true;
+             if (input.value === ""){
+                dispatcher.post('messages', [[["error: You need to give an answer", 'error']]]);
+             } else {
+                 textLevelInputSubmit();
+             }
+         });
+         if (textinput){
+             return false
+         }
+          ids = [];
+          var val;
+          var req = false;
+          if(textLevelList.stop){
+              dispatcher.post('hideForm');
+              return False;
+          }
+          $('#textLevel_span input[type="radio"]').each(function() {
+            req = true;
+			//break;
+          });
+          $('#textLevel_span input').each(function() {
+			var checked = this.checked;
+            if (checked){
+                val = this.value;
+                ids.push(val);
+            }
+          });
+          if (!val && req){
+              dispatcher.post('messages', [[["error: You need to select an answer", 'error']]]);
+              return false;
+          }
+		  var options = {
+				  action: 'selectList',
+				  'path': coll,
+				  'doc': doc,
+				  '_id':JSON.stringify(ids),
+				  'start_list':idStartList,
+                  'current_list':currentList,
+				  };
+		   dispatcher.post('ajax', [options, 
+		   function(response) {
+				   if(response.exception){
+					dispatcher.post('messages', [[["exception "+response.exception, 'error']]]);
+					} else {
+						if( idStartList === "" )
+							idStartList=val;
+					   if( ! response.stop){
+							var textlevelSpan = $('#textLevel_span');
+							textlevelSpan.empty();
+							var string =buildTableString(response);
+							textlevelSpan.append(string);
+                            if( response.back_pos){
+                                $('#textLevel_form-back').show();
+                            } else {
+                                $('#textLevel_form-back').hide();
+                            }
+                            var textinput = false
+                            $('#textLevel_span input[type="text"]').each(function(index,input){
+                                input.value = response.answers;
+                                textinput = true;
+                            });
+                            if (textinput){
+                                return false;
+                            }
+                            $('#textLevel_span input').each(function() {
+                                val = this.value;
+                                if (response.answers.indexOf(val) >= 0){
+                                    this.checked = true;
+                                }
+                            });
+                            $('#textLevel_span').find('input[type="radio"]').button();
+                            $('#textLevel_span').find('input[type="checkbox"]').button();
+						} else {
+							textLevelList = response;
+                            currentList = 'stop';
+							var textlevelSpan = $('#textLevel_span');
+							textlevelSpan.empty();
+                            textlevelSpan.append(textLevelList.annotation);
+                            $('#textLevel_form-back').show();
+							//textlevelSpan.append("Text level annotation added");			
+						}
+						//$('#textLevel_form-back').show();
+				  }
+		  }]);
+	  };
+	  
+	  $('#textann_button').click(function() {
+        dispatcher.post('showForm', [textLevelForm]);
+      });
+      //---- END edits by Sander Naert
 
       /* START options dialog - related */
 
@@ -1716,6 +2145,19 @@ var VisualizerUI = (function($, window, undefined) {
         });
         /* Add a download link for the whole collection */
         invalidateSavedSVG();
+		
+        /* Add download link for folia xml format */
+    	/* added by Sander Naert */
+		var $foliaFile = $('#folia_file').empty();
+		var $folialink = $('<a target="brat_search"/>').
+			text('xml').
+			attr('href',
+			'ajax.cgi?action=downloadFile&collection=' + encodeURIComponent(coll) +
+			'&document=' + encodeURIComponent(doc) + '&extension=' + encodeURIComponent('xml') +
+			// TODO: Extract the protocol version into somewhere global
+			'&protocol=' + 1);
+		$folialink.button();
+		$foliaFile.append($folialink);
 
         mtime = sourceData.mtime;
         if (mtime) {
@@ -2195,6 +2637,32 @@ var VisualizerUI = (function($, window, undefined) {
         dispatcher.post('configurationChanged');
       });
 
+	  // Added by Sander Naert, button to toggle vallidation and reload the document
+      $('#validation_mode').click(function(evt) {
+        var val = this.checked;
+        if (val) {
+          Configuration.validationOn = true;
+          dispatcher.post('messages', [[['Validation is now on', 'comment']]]);
+        } else {
+          Configuration.validationOn = false;
+          dispatcher.post('messages', [[['Validation is now off', 'comment']]]);
+        }
+         configurationChangedUpdate();
+      });
+      // Added by Sander Naert, button to toggle autoredraw and reload the document
+      $('#autoredraw_mode').click(function(evt) {
+        var val = this.checked;
+        if (val) {
+          Configuration.autoRedraw = true;
+          dispatcher.post('messages', [[['Autoredraw is now on', 'comment']]]);
+          configurationChangedUpdate();
+        } else {
+          Configuration.autoRedraw = false;
+          dispatcher.post('messages', [[['Autoredraw is now off', 'comment']]]);
+          configurationChanged();
+        }
+      });
+
       var isReloadOkay = function() {
         // do not reload while the user is in the dialog
         return currentForm == null;
@@ -2245,6 +2713,30 @@ var VisualizerUI = (function($, window, undefined) {
           $('#svg_width_unit input[value="'+splitSvgWidth[2]+'"]')[0].checked = true;
           $('#svg_width_unit input').button('refresh');
         }
+
+		// Added by Sander Naert: Validation
+        $('#validation_mode')[0].checked = Configuration.validationOn;
+        $('#validation_mode').button('refresh');
+        $('#autoredraw_mode')[0].checked = Configuration.autoRedraw;
+        $('#autoredraw_mode').button('refresh');
+        //check the right buttons depending on session config
+        $("#folia_layers_form input[type=checkbox]").each(function() {
+            var val = this.value;
+            var checked = this.checked;
+            if (checked){
+                var index = -1;
+                for(var i = 0, len = Configuration.foliaLayers.length; i < len; i++) {
+                    if (Configuration.foliaLayers[i] === val) {
+                        index = i;
+                        break;
+                    }
+                }
+                if (index >= 0 && Configuration.foliaLayers[index] === val){
+                    $(this).prop("checked", false);
+                }
+            }
+        });  
+        $('#folia_layers_form').find('input[type="checkbox"]').button('refresh');
 
         // Autorefresh
         $('#autorefresh_mode')[0].checked = Configuration.autorefreshOn;
@@ -2318,6 +2810,8 @@ var VisualizerUI = (function($, window, undefined) {
           on('screamingHalt', onScreamingHalt).
           on('configurationChanged', configurationChanged).
           on('configurationUpdated', updateConfigurationUI);
+          //added by sander naert
+          on('displayFoliaComment',displayFoliaComment);
     };
 
     return VisualizerUI;
