@@ -818,6 +818,7 @@ class Annotations(object):
 
         return type, spans
 
+    #Added by Sander Naert
     def _parse_textlevel_annotation(self, _id, data, data_tail, input_file_path):
         args = data.split(' ')
         _type = args[0]
