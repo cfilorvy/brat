@@ -2809,9 +2809,8 @@ var VisualizerUI = (function($, window, undefined) {
           on('clearSVG', showNoDocMessage).
           on('screamingHalt', onScreamingHalt).
           on('configurationChanged', configurationChanged).
-          on('configurationUpdated', updateConfigurationUI);
-          //added by sander naert
-          on('displayFoliaComment',displayFoliaComment);
+          on('configurationUpdated', updateConfigurationUI).
+          on('displayFoliaComment',displayFoliaComment); //added by sander naert
     };
 
     return VisualizerUI;
