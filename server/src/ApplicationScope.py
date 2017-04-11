@@ -1,9 +1,12 @@
+import os
+import time
 
-from os.path import exists, dirname, join as path_join, isfile
-from annotation import Annotations,SimpleAnnotations,TextAnnotations
-from document import get_document
-from projectconfig import ProjectConfiguration
+from annotation import Annotations, SimpleAnnotations, TextAnnotations
+from document import real_directory
 from folia2brat import get_extra_info
+from projectconfig import ProjectConfiguration
+from verify_annotations import verify_annotation
+
 try:
     from cPickle import dump as pickle_dump, load as pickle_load
 except ImportError:
@@ -11,13 +14,13 @@ except ImportError:
 
 from config import WORK_DIR
 from message import Messager
-import session 
+import session
+import simplejson as json
 
 
 def filter_layers(ann,path):
      #Added by Sander Naert to disable the visualisation of same annotations
     try:
-        import simplejson as json
         string = session.load_conf()["config"]
         val = json.loads(string)["layers"]
     except session.NoSessionError:
@@ -28,7 +31,6 @@ def filter_layers(ann,path):
         val = []
         Messager.error("Error while enabling/disabling layers: "+str(e))
     proj = ProjectConfiguration(path)
-    forbidden_entitie_types = []
     forbidden_entities = set()
     forbidden_ann=[]
     for i in val:
@@ -42,6 +44,7 @@ def filter_layers(ann,path):
         else:
             temp_array.append(i)
     ann["entities"] = temp_array
+
     #Remove forbidden triggers
     temp_array = []
     forbidden_events=[]
@@ -85,13 +88,11 @@ def filter_layers(ann,path):
     ann["attributes"] = temp_array
     
     return ann
-    
+
+
 def filter_folia(ann_obj):
-    forbidden_ann=[]
     response = {"entities":[],"comments":[],"relations":[],"attributes":[],"tokens":{}}
     try:
-        import simplejson as json
-        import session
         string = session.load_conf()["config"]
         val = json.loads(string)["foliaLayers"]
     except session.NoSessionError:
@@ -146,77 +147,16 @@ def filter_folia(ann_obj):
         response = ann_obj.folia
     return response
     
-#~ def validation(ann): 
-    #~ #Added by Sander Naert: check if validation isn't turned off by client
-    #~ try:
-        #~ import simplejson as json
-        #~ import session
-        #~ string = session.load_conf()["config"]
-        #~ Messager.debug("session: " + session.load_conf()["config"])
-        #~ val = json.loads(string)["validationOn"]
-    #~ except session.NoSessionError:
-        #~ val = False
-    #~ except KeyError:
-        #~ val = False
-    #~ except Exception:
-        #~ val = False
-        #~ Messager.error("Error while loading validation config:"+str(e))
-    #~ temp_array = []
-    #~ for i in ann["comments"]:
-        #~ if not val and i[1] == "AnnotationError":
-            #~ pass
-        #~ else:
-            #~ temp_array.append(i)
-    #~ ann["comments"] = temp_array
-    #~ return ann
     
 def getAnnObject(collection,document):
-    return getAnnObject2(collection,document)
-    
-#~ def getAnnObject1(collection,document):
-    #~ app_path = WORK_DIR + "/application/"
-    #~ ann = None
-    #~ full_name = collection + document
-    #~ full_name = full_name.replace("/","")
-    #~ if( isfile(app_path+full_name)):
-        #~ temp=open (app_path+full_name , 'rb')
-        #~ ann = pickle_load(temp)
-        #~ temp.close()
-    #~ else:
-        #~ ann = get_document(collection, document)
-        #~ try:
-            #~ #TODO:good error message
-            #~ ann["folia"]=get_extra_info(collection,document)
-        #~ except:
-            #~ ann["folia"] = []
-        #~ temp=open (app_path+full_name , 'wb')    
-        #~ pickle_dump(ann, temp)
-        #~ temp.close()
-    #~ if ann == None:
-        #~ ann = get_document(collection, document)
-    #~ try:
-        #~ from os.path import join as path_join
-        #~ from document import real_directory
-        #~ real_dir = real_directory(collection)
-    #~ except:
-        #~ real_dir=collection
-    #~ filter_layers(ann,real_dir)
-    #~ validation(ann)
-    #~ return ann
-
-def getAnnObject2(collection,document):
-    '''newest version of the getAnnObject methode'''
     try:
-        from os.path import join as path_join
-        from document import real_directory
         real_dir = real_directory(collection)
     except:
         real_dir=collection      
     app_path = WORK_DIR + "/application/"
-    ann = None
     full_name = collection + document
     full_name = full_name.replace("/","")
-    if( isfile(app_path+full_name)):
+    if(os.path.isfile(app_path+full_name)):
         temp=open (app_path+full_name , 'rb')
         ann = pickle_load(temp)
         temp.close()
@@ -232,18 +172,13 @@ def getAnnObject2(collection,document):
             Messager.error('Error: get extra folia info() failed: %s' % e)
     #Validation:
     try:
-        import os
-        import simplejson as json
-        import session
         docdir = os.path.dirname(ann._document)
         string = session.load_conf()["config"]
         val = json.loads(string)["validationOn"]
         #validate if config enables it and if it's not already done.
         if val:
-            if not ann.validated:    
-                from verify_annotations import verify_annotation
+            if not ann.validated:
                 projectconf = ProjectConfiguration(docdir)
-                issues = []
                 issues = verify_annotation(ann, projectconf)
             else:
                 issues = ann.issues
@@ -257,16 +192,13 @@ def getAnnObject2(collection,document):
     except Exception as e:
         # TODO add an issue about the failure?
         issues = []
+        Messager.error('Error: validation failed: %s' % e)
     ann.issues = issues
     temp=open (app_path+full_name , 'wb')    
     pickle_dump(ann, temp)
     temp.close()
     return ann
 
-def getDocJson(collection,document):
-    from annotator_cachen import _json_from_ann
-    ann = getAnnObject(collection,document)
-    return _json_from_ann(ann)
     
 def update_pickle(sann):
     app_path = WORK_DIR + "/application/"
@@ -278,7 +210,8 @@ def update_pickle(sann):
         temp.close()
     except Exception as e:
         Messager.error("Error while caching changes in the annotation file: "+str(e))
-        
+
+
 def update_dump(j_dic,file_path):
     app_path = WORK_DIR + "/application/"
     temp_paths = file_path.split("/data/")
@@ -292,14 +225,9 @@ def update_dump(j_dic,file_path):
         
     
 if __name__ == '__main__':
-    import time
     millis = int(round(time.time() * 1000))
     print millis
-    #ann = getAnnObject("/brat_vb/sentiment","detijd_other_Bekaert_12-05-05")
     ann = Annotations("/home/sander/Documents/Masterproef/brat/data/test")
-    #~ ann = Annotations('/home/hast/Downloads/brat/data/brat_vb/sentiment/test')
-    from annotation import TextBoundAnnotation
-    #getAnnObject2("/","sporza")
     sann = SimpleAnnotations(ann)
     print filter_folia(sann)
     millis = int(round(time.time() * 1000)) - millis
